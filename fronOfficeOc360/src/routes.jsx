@@ -8,6 +8,7 @@ import {
 import {  Annonce } from "@/pages/dashboard";
 import { SignIn} from "@/pages/auth";
 import Acceuil from "./pages/dashboard/acceuil";
+import Favoris from "./pages/dashboard/favoris";
 
 const icon = {
   className: "w-5 h-5 text-inherit",
@@ -26,9 +27,9 @@ export const routes = [
       },
       {
         icon: <DocumentTextIcon {...icon} />,
-        name: "Annonce",
-        path: "/annonce",
-        element: <Annonce />,
+        name: "Favoris",
+        path: "/favoris",
+        element: <Favoris />,
         op: "",
       },
     ],

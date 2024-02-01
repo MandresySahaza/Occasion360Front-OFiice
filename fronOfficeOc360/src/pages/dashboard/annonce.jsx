@@ -30,7 +30,6 @@ export function Annonce() {
     const checkToken = () => {
       const token = localStorage.getItem('authToken');
 
-      // Si le token est présent, l'utilisateur est connecté
       if (!token) {
         navigate('/auth/sign-in');
       }
@@ -308,3 +307,4 @@ export function Annonce() {
 }
 
 export default Annonce;
+

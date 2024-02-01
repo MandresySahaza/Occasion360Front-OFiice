@@ -20,19 +20,40 @@ import {
   import { useEffect, useState } from 'react';
   import { jwtDecode } from "jwt-decode";
   
-
-  export function Acceuil() {
+  export function Favoris() {
   
     const navigate = useNavigate();
     const [dataAnnonces, setDataAnnonces] = useState([]);
   
     useEffect(() => {
-        const getAnnonces = async () => {
+        const checkToken = () => {
+            const token = localStorage.getItem('token');
     
-            const apiAnnonce = "https://api-finalclouds5-production.up.railway.app/annonces/offers"; 
+            if (!token) {
+            navigate('/auth/sign-in');
+            }
+    
+            try {
+            const decodedtoken = jwtDecode(token);
+            const now = Date.now() / 1000;
+            if(now > decodedtoken.exp) localStorage.removeItem('token');
+            } catch (error) {
+            localStorage.removeItem('token');
+            navigate('/auth/sign-in');
+            }
+    
+        };
+
+        const getMyFavoris = async () => {
+    
+            const apiAnnonce = "https://api-finalclouds5-production.up.railway.app/favoris/myfavourites"; 
             try {
                 const reponsePays = await fetch(apiAnnonce, {
                     method: 'GET',
+                    headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + localStorage.getItem('token'),
+                    },
                 });
                 if (!reponsePays.ok) {
                     throw new Error('Erreur lors de la demande.');
@@ -45,72 +66,14 @@ import {
             }
     
         };
-        getAnnonces();
-    }, []);
   
-      
-    
-    const submitAddFavoris = async (e, id) => {
-        e.preventDefault();
-    
-        const checkToken = async () => {
-            const token = localStorage.getItem('token');
-            console.log(token);
-    
-            if (!token) {
-                navigate('/auth/sign-in');
-                return false; // Indiquer que la navigation a été déclenchée
-            }
-    
-            try {
-                const decodedtoken = jwtDecode(token);
-                const now = Date.now() / 1000;
-                if (now > decodedtoken.exp) {
-                    localStorage.removeItem('token');
-                }
-            } catch (error) {
-                localStorage.removeItem('token');
-                navigate('/auth/sign-in');
-                return false;
-            }
-    
-            return true; // Indiquer que la navigation n'a pas été déclenchée
-        };
-    
-        const shouldInsertToFavoris = await checkToken();
-    
-        if (shouldInsertToFavoris) {
-            const insertToFavoris = async () => {
-                const apiAddToFavoris = "https://api-finalclouds5-production.up.railway.app/favoris";
-                const requestOptions = {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`
-                    },
-                    body: JSON.stringify({ id_annonce: id })
-                };
-    
-                try {
-                    const response = await fetch(apiAddToFavoris, requestOptions);
-                    const data = await response.json();
-    
-                    if (data.code === 0) {
-                        alert("Annonce ajouter dans vos Favoris");
-                    } else {
-                        alert( data.message);
-                    }
-                } catch (error) {
-                    console.error('Error adding announcement to favorites : '+ error.message);
-                    alert('Error adding announcement to favorites : '+ error.message);
-                }
-            };
-    
-            insertToFavoris();
-        }
-    };
-  
+        checkToken();
+        getMyFavoris(); 
 
+      }, []);
+  
+    
+  
     return (
       <>
         <div className="relative mt-8 h-72 w-full overflow-hidden rounded-xl bg-[url('/img/background-image.png')] bg-cover	bg-center">
@@ -120,21 +83,21 @@ import {
           <CardBody className="p-4">
             <div className="px-4 pb-4">
               <Typography variant="h3" color="blue-gray" className="mb-2">
-                Liste des annonces en cours
+                Liste des annonces à valider
               </Typography>
               <br/>
               <div className="mt-6 grid grid-cols-1 gap-12 md:grid-cols-2 xl:grid-cols-4">
               { dataAnnonces && dataAnnonces.map(
-                  ({id, datePub, prix, utilisateur, voiture, description, photos}) => (
+                  ({id, dateAjout, prix, utilisateur, annonce}) => (
                     <Card key={id} color="transparent" shadow={false}>
                       <CardHeader
                         floated={false}
                         color="gray"
                         className="mx-0 mt-0 mb-4 h-64 xl:h-40"
                       >
-                        {photos && photos.length > 0 && (
+                        {annonce.photos && annonce.photos.length > 0 && (
                         <img
-                          src={photos[0].lien}
+                          src={annonce.photos[0].lien}
                           alt="No image"
                           className="h-full w-full object-cover"
                         />
@@ -146,22 +109,16 @@ import {
                           color="blue-gray"
                           className="mt-1 mb-2"
                         >
-                          {voiture.marque.nom + " " + voiture.modele.nom}
+                          {annonce.voiture.marque.nom + " " + annonce.voiture.modele.nom}
                         </Typography>
                         <Typography
                           variant="small"
                           className="font-normal text-blue-gray-500"
                         >
-                          Le {datePub} par {utilisateur.nom + " " + utilisateur.prenom}
+                          Le {dateAjout} par {utilisateur.nom + " " + utilisateur.prenom}
                         </Typography>
                       </CardBody>
                       <CardFooter className="mt-6 flex items-center justify-between py-0 px-1">
-                        <Button variant="outlined" size="sm">
-                            Texto
-                        </Button>
-                        <Button variant="outlined" size="sm" onClick={(e) => submitAddFavoris(e, id)}>
-                            Favoris
-                        </Button>
                           <Popover
                         animate={{
                           mount: { scale: 1, y: 0 },
@@ -179,31 +136,31 @@ import {
                             </IconButton>
                           
                         </PopoverHandler>
-                        <PopoverContent className="z-[999] grid w-[28rem] grid-cols-1 overflow-hidden p-0 fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 backdrop-filter backdrop-blur-md">
+                        <PopoverContent className="z-[999] grid w-[28rem] grid-cols-1 overflow-hidden p-0">
                         <Card className="mt-6 w-full" style={{margin:'auto'}}>
                           
                             
                               <div className="z-[999] grid w-[28rem] grid-cols-2 overflow-hidden p-0">
                                 <div className="ml-2">
-                                <Typography className="mt-2">Marque: {voiture.marque.nom} </Typography>
-                                  <Typography className="mt-2">Modèle: {voiture.modele.nom} </Typography>
-                                  <Typography className="mt-2">Catégorie: {voiture.categorie.nom} </Typography>
-                                  <Typography className="mt-2">Année de mise en circulation: {voiture.modele.anneeSortie} </Typography>
-                                  <Typography className="mt-2">Energie: {voiture.energie.nom} </Typography>
+                                <Typography className="mt-2">Marque: {annonce.voiture.marque.nom} </Typography>
+                                  <Typography className="mt-2">Modèle: {annonce.voiture.modele.nom} </Typography>
+                                  <Typography className="mt-2">Catégorie: {annonce.voiture.categorie.nom} </Typography>
+                                  <Typography className="mt-2">Année de mise en circulation: {annonce.voiture.modele.anneeSortie} </Typography>
+                                  <Typography className="mt-2">Energie: {annonce.voiture.energie.nom} </Typography>
                                 </div>
                                 <div className="ml-2">
-                                <Typography className="mt-2">Boite de vitesse: {voiture.boite.nom} </Typography>
-                                  <Typography className="mt-2">Etat: {voiture.etatVoiture.nom} </Typography>
-                                  <Typography className="mt-2">Kilometrage: {voiture.kilometrage} </Typography>
-                                  <Typography className="mt-2">matricule: {voiture.matricule} </Typography>
-                                  <Typography className="mt-2">description: {description} </Typography>
+                                <Typography className="mt-2">Boite de vitesse: {annonce.voiture.boite.nom} </Typography>
+                                  <Typography className="mt-2">Etat: {annonce.voiture.etatVoiture.nom} </Typography>
+                                  <Typography className="mt-2">Kilometrage: {annonce.voiture.kilometrage} </Typography>
+                                  <Typography className="mt-2">matricule: {annonce.voiture.matricule} </Typography>
+                                  <Typography className="mt-2">description: {annonce.description} </Typography>
                                 </div>
                               </div>
                               
                               <Typography variant="h3" color="green" className="mt-2" style={{margin: 'auto'}}>{prix} Ar</Typography>
   
                                 <Carousel className="rounded-xl w-1/2 h-64" style={{margin: 'auto'}}>
-                                { photos && photos.map(
+                                { annonce.photos && annonce.photos.map(
                                     ({id, lien}) => (
                                 <img
                                     key={id}
@@ -216,6 +173,9 @@ import {
                           </Card>
                         </PopoverContent>
                       </Popover>
+                          
+                            
+                          
                       </CardFooter>
                     </Card>
                   ))}
@@ -227,7 +187,6 @@ import {
     );
   }
   
-  
-  export default Acceuil;
+  export default Favoris;
   
   
